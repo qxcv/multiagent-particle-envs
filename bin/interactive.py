@@ -2,6 +2,7 @@
 import os,sys
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
 import argparse
+import time
 
 from multiagent.environment import MultiAgentEnv
 from multiagent.policy import InteractivePolicy
@@ -25,6 +26,7 @@ if __name__ == '__main__':
     policies = [InteractivePolicy(env,i) for i in range(env.n)]
     # execution loop
     obs_n = env.reset()
+    last_frame = time.time()
     while True:
         # query for action from each agent's policy
         act_n = []
@@ -34,6 +36,9 @@ if __name__ == '__main__':
         obs_n, reward_n, done_n, _ = env.step(act_n)
         # render all agent views
         env.render()
+        elapsed = time.time() - last_frame
+        time.sleep(max(0, 0.05-elapsed))
+        last_frame = time.time()
         # display rewards
         #for agent in env.world.agents:
         #    print(agent.name + " reward: %0.3f" % env._get_reward(agent))

@@ -1,3 +1,7 @@
+# python junk
 __pycache__/
 *.egg-info/
 *.pyc
+# emacs/vim junk
+.#*
+*.swp

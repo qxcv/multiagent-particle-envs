@@ -76,6 +76,7 @@ class Viewer(object):
         self.transform = Transform(
             translation=(-left*scalex, -bottom*scaley),
             scale=(scalex, scaley))
+        self.bound_lrbt = (left, right, bottom, top)
 
     def add_geom(self, geom):
         self.geoms.append(geom)
@@ -88,12 +89,30 @@ class Viewer(object):
         self.window.clear()
         self.window.switch_to()
         self.window.dispatch_events()
+
         self.transform.enable()
+
+        # now draw actual geoms
         for geom in self.geoms:
             geom.render()
         for geom in self.onetime_geoms:
             geom.render()
+
+        # draw some lines as references
+        l, r, b, t = self.bound_lrbt
+        y_vals = np.arange(int(np.floor(b)), int(np.ceil(t)) + 1)
+        for y_val in y_vals:
+            line = Line((l, y_val), (r, y_val))
+            _add_attrs(line, dict(color=(0.0, 0.0, 0.0, 0.4)))
+            line.render()
+        x_vals = np.arange(int(np.floor(l)), int(np.ceil(r)))
+        for x_val in x_vals:
+            line = Line((x_val, b), (x_val, t))
+            _add_attrs(line, dict(color=(0.0, 0.0, 0.0, 0.4)))
+            line.render()
+
         self.transform.disable()
+
         arr = None
         if return_rgb_array:
             buffer = pyglet.image.get_buffer_manager().get_color_buffer()
