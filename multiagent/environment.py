@@ -180,6 +180,7 @@ class MultiAgentEnv(gym.Env):
                 sensitivity = agent.accel
             agent.action.u *= sensitivity
             action = action[1:]
+
         if not agent.silent:
             # communication action
             if self.discrete_action_input:
@@ -188,6 +189,7 @@ class MultiAgentEnv(gym.Env):
             else:
                 agent.action.c = action[0]
             action = action[1:]
+
         # make sure we used all elements of action
         assert len(action) == 0
 

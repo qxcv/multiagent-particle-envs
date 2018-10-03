@@ -37,8 +37,10 @@ def make_env(scenario_name, benchmark=False):
     # create world
     world = scenario.make_world()
     # create multiagent environment
-    if benchmark:        
-        env = MultiAgentEnv(world, scenario.reset_world, scenario.reward, scenario.observation, scenario.benchmark_data)
+    if benchmark:
+        env = MultiAgentEnv(world, scenario.reset_world, scenario.reward,
+            scenario.observation, scenario.benchmark_data, done_callback=scenario.done)
     else:
-        env = MultiAgentEnv(world, scenario.reset_world, scenario.reward, scenario.observation)
+        env = MultiAgentEnv(world, scenario.reset_world, scenario.reward,
+            scenario.observation, done_callback=scenario.done)
     return env

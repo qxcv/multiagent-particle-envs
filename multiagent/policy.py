@@ -31,6 +31,8 @@ class InteractivePolicy(Policy):
             if self.move[3]: u = 3
         else:
             u = np.zeros(5) # 5-d because of no-move action
+            # to randomise actions:
+            # u[1:] = np.random.random(4)
             if self.move[0]: u[1] += 1.0
             if self.move[1]: u[2] += 1.0
             if self.move[3]: u[3] += 1.0
