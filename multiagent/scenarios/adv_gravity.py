@@ -24,7 +24,7 @@ class GravityWorld(World):
         # damping doesn't matter, so I'll just set to high value
         adversary.damping = 0.8
         # acceleration is almost that of the controller to make things hard
-        adversary.accel = 4/5.0 * controller.accel
+        adversary.accel = 0.6 * controller.accel
 
         # add landmarks
         self.landmarks = [Landmark() for i in range(2)]
@@ -53,10 +53,10 @@ class GravityWorld(World):
 
         controller.color = np.array([0.25, 0.25, 0.25])
         controller.state.p_pos = np.array([-1, 0]) \
-            + np.random.uniform(-0.05, 0.05, self.dim_p)
+            + np.random.uniform(-0.01, 0.01, self.dim_p)
         # bias velocity to go up since DDPG can't handle split policy
-        controller.state.p_vel = np.array([0, 0]) \
-            + np.random.uniform([-0.05, 0.0], [0.01, 0.1], self.dim_p)
+        controller.state.p_vel = np.array([0, 0.1]) \
+            + np.random.uniform([-0.01, -0.01], [0.01, 0.01], self.dim_p)
         controller.state.c = np.zeros(self.dim_c)
 
         # adversary sits inside the controller at all times (for visual
