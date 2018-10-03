@@ -15,17 +15,16 @@ class GravityWorld(World):
         controller.collide = True
         controller.silent = True
         # slow acceleration & low friction
-        controller.damping = 0.01
-        controller.accel = 0.2
+        controller.damping = 0.0
+        controller.accel = 0.3
 
         adversary.name = 'adversary'
         adversary.collide = False
         adversary.silent = True
         # damping doesn't matter, so I'll just set to high value
         adversary.damping = 0.8
-        # acceleration should be ~half of real adversary acceleration so that
-        # adversary can do tricky stuff (will turn up if this is underpowered)
-        adversary.accel = 0.1
+        # acceleration is almost that of the controller to make things hard
+        adversary.accel = 4/5.0 * controller.accel
 
         # add landmarks
         self.landmarks = [Landmark() for i in range(2)]
@@ -34,37 +33,42 @@ class GravityWorld(World):
         sun.name = 'sun'
         sun.collide = False
         sun.movable = False
-        sun.gravity_coeff = 0.05
+        sun.gravity_coeff = 0.15
         sun.size = 0.2
 
         goal.name = 'goal'
         goal.collide = False
         goal.movable = False
-        goal.size = 0.2
-        goal.gravity_coeff = 0.05
+        goal.size = 0.14
+        # roughly 1/3rd the gravity due to smaller mass
+        goal.gravity_coeff = 0.15
 
         self.time = 0
-        self.max_steps = 500
+        self.max_steps = 140
 
     def reset(self):
-        controller, adversary = self.agents
+        self.time = 0
 
-        sun, goal = self.landmarks
-        sun.color = np.array([0.75, 0.25, 0.25])
-        goal.color = np.array([0.25, 0.75, 0.25])
+        controller, adversary = self.agents
 
         controller.color = np.array([0.25, 0.25, 0.25])
         controller.state.p_pos = np.array([-1, 0]) \
-            + np.random.uniform(-0.01, 0.01, self.dim_p)
-        controller.state.p_vel = np.array([0.1, 0.25]) \
-            + np.random.uniform(-0.01, 0.01, self.dim_p)
+            + np.random.uniform(-0.05, 0.05, self.dim_p)
+        # bias velocity to go up since DDPG can't handle split policy
+        controller.state.p_vel = np.array([0, 0]) \
+            + np.random.uniform([-0.05, 0.0], [0.01, 0.1], self.dim_p)
         controller.state.c = np.zeros(self.dim_c)
 
-        # invisible adversary sits inside the sun (dot tumblr dot com)
+        # adversary sits inside the controller at all times (for visual
+        # cleanness)
         adversary.color = np.array([0.75, 0.25, 0.25])
-        adversary.state.p_pos = np.array([0.0, 0.0])
-        adversary.state.p_vel = np.array([0.0, 0.0])
+        adversary.state.p_pos = controller.state.p_pos.copy()
+        adversary.state.p_vel = controller.state.p_vel.copy()
         adversary.state.c = np.zeros(self.dim_c)
+
+        sun, goal = self.landmarks
+        sun.color = np.array([1.0, 0.65, 0.0])
+        goal.color = np.array([0.0, 0.45, 0.75])
 
         sun.state.p_pos = np.array([0, 0])
         sun.state.p_vel = np.zeros(self.dim_p)
@@ -92,7 +96,7 @@ class GravityWorld(World):
         sun_dist = np.linalg.norm(control_agent.state.p_pos - sun_landmark.state.p_pos)
         hit_goal = self._entities_overlap(control_agent, goal_landmark) + 0.0
         hit_sun = self._entities_overlap(control_agent, sun_landmark) + 0.0
-        rew = self.max_steps * hit_goal - self.max_steps * hit_sun + min(1, 1 - 0.4 * goal_dist)
+        rew = self.max_steps * hit_goal - self.max_steps * hit_sun - min(0.2 * goal_dist, 1)
 
         # now we return the actual reward for the control agent, or negative
         # reward for the adversary
@@ -107,6 +111,10 @@ class GravityWorld(World):
 
     def step(self):
         rv = super().step()
+        # move adversary into same place as agent
+        controller, adversary = self.agents
+        adversary.state.p_pos = controller.state.p_pos.copy()
+        adversary.state.p_vel = controller.state.p_vel.copy()
         # advance the clock
         self.time += 1
         return rv
@@ -117,7 +125,8 @@ class GravityWorld(World):
         min_sep = ent_a.size + ent_b.size
         return dist < min_sep
 
-    def done(self):
+    def done(self, agent):
+        # we ignore agent arg because termination condition is the same for all agents
         if self.time > self.max_steps:
             return True
         control_agent = self.agents[0]
@@ -139,11 +148,14 @@ class Scenario(BaseScenario):
         return world.reward(agent)
 
     def observation(self, agent, world):
-        # get positions of all entities in this agent's reference frame
+        # get positions of all landmarks in this *first agent's* reference frame
+        # this means that both agents get the same observation
         entity_pos = []
+        agent = world.agents[0]
         for entity in world.landmarks:
             entity_pos.append(entity.state.p_pos - agent.state.p_pos)
         return np.concatenate([agent.state.p_vel] + entity_pos)
 
     def done(self, agent, world):
-        return world.done()
+        rv = world.done(agent)
+        return rv

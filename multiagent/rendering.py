@@ -92,13 +92,9 @@ class Viewer(object):
 
         self.transform.enable()
 
-        # now draw actual geoms
-        for geom in self.geoms:
-            geom.render()
-        for geom in self.onetime_geoms:
-            geom.render()
-
         # draw some lines as references
+        # (Sam: this would be way cleaner in environment.py but I put it here
+        # because I didn't understand how this all worked initially)
         l, r, b, t = self.bound_lrbt
         y_vals = np.arange(int(np.floor(b)), int(np.ceil(t)) + 1)
         for y_val in y_vals:
@@ -110,6 +106,12 @@ class Viewer(object):
             line = Line((x_val, b), (x_val, t))
             _add_attrs(line, dict(color=(0.0, 0.0, 0.0, 0.4)))
             line.render()
+
+        # now draw actual geoms
+        for geom in self.geoms:
+            geom.render()
+        for geom in self.onetime_geoms:
+            geom.render()
 
         self.transform.disable()
 

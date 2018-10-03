@@ -3,6 +3,7 @@ import os, sys
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
 import argparse
 import time
+import numpy as np
 
 from multiagent.environment import MultiAgentEnv
 from multiagent.policy import InteractivePolicy
@@ -45,6 +46,8 @@ if __name__ == '__main__':
     last_frame = time.time()
     done = False
     delay = 1 / args.fps
+    step = 1
+    traj_rew = np.zeros(env.n)
     while not done:
         # query for action from each agent's policy
         act_n = []
@@ -59,7 +62,11 @@ if __name__ == '__main__':
         last_frame = time.time()
         done = all(done_n)
         # display rewards
+        print("Step %d" % step)
         for agent in env.world.agents:
            print(agent.name + " reward: %0.3f" % env._get_reward(agent))
-    print('Done! Use Enter or Ctrl+D to exit.')
+        step += 1
+        traj_rew += reward_n
+    print('Done! Trajectory reward %s' % traj_rew)
+    print('Use Enter or Ctrl+D to exit.')
     input()

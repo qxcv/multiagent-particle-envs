@@ -195,8 +195,7 @@ class MultiAgentEnv(gym.Env):
 
     # reset rendering assets
     def _reset_render(self):
-        self.render_geoms = None
-        self.render_geoms_xform = None
+        self.render_states = None
 
     # render environment
     def render(self, mode='human'):
@@ -221,37 +220,26 @@ class MultiAgentEnv(gym.Env):
                 # import rendering only if we need it (and don't import for headless machines)
                 #from gym.envs.classic_control import rendering
                 from multiagent import rendering
-                self.viewers[i] = rendering.Viewer(700,700)
+                self.viewers[i] = rendering.Viewer(900, 900)
 
         # create rendering geometry
-        if self.render_geoms is None:
+        if self.render_states is None:
             # import rendering only if we need it (and don't import for headless machines)
             #from gym.envs.classic_control import rendering
             from multiagent import rendering
-            self.render_geoms = []
-            self.render_geoms_xform = []
-            for entity in self.world.entities:
-                geom = rendering.make_circle(entity.size)
-                xform = rendering.Transform()
-                if 'agent' in entity.name:
-                    geom.set_color(*entity.color, alpha=0.5)
-                else:
-                    geom.set_color(*entity.color)
-                geom.add_attr(xform)
-                self.render_geoms.append(geom)
-                self.render_geoms_xform.append(xform)
-
-            # add geoms to viewer
+            # rendering state info used for different entities
+            self.render_states = []
             for viewer in self.viewers:
                 viewer.geoms = []
-                for geom in self.render_geoms:
-                    viewer.add_geom(geom)
+                self.render_states.append([])
+                for entity in self.world.entities:
+                    self.render_states[-1].append(entity.render_init(viewer))
 
         results = []
         for i in range(len(self.viewers)):
             from multiagent import rendering
             # update bounds to center around agent
-            cam_range = 1
+            cam_range = 2
             if self.shared_viewer:
                 pos = np.zeros(self.world.dim_p)
             else:
@@ -259,7 +247,7 @@ class MultiAgentEnv(gym.Env):
             self.viewers[i].set_bounds(pos[0]-cam_range,pos[0]+cam_range,pos[1]-cam_range,pos[1]+cam_range)
             # update geometry positions
             for e, entity in enumerate(self.world.entities):
-                self.render_geoms_xform[e].set_translation(*entity.state.p_pos)
+                self.render_states[i][e] = entity.render_update(self.viewers[i], self.render_states[i][e])
             # render to display or array
             results.append(self.viewers[i].render(return_rgb_array = mode=='rgb_array'))
 

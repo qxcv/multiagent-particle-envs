@@ -58,6 +58,31 @@ class Entity(object):
     def mass(self):
         return self.initial_mass
 
+    def render_init(self, viewer):
+        from multiagent import rendering
+
+        render_geoms = []
+        render_geoms_xform = []
+
+        geom = rendering.make_circle(self.size)
+        xform = rendering.Transform()
+        geom.set_color(*self.color, alpha=0.5)
+        geom.add_attr(xform)
+        render_geoms.append(geom)
+        render_geoms_xform.append(xform)
+
+        for geom in render_geoms:
+            viewer.add_geom(geom)
+
+        # return info for this viewer
+        return render_geoms, render_geoms_xform
+
+    def render_update(self, viewer, render_state):
+        render_geoms, render_geoms_xform = render_state
+        for geom_xform in render_geoms_xform:
+            geom_xform.set_translation(*self.state.p_pos)
+        return render_geoms, render_geoms_xform
+
 # properties of landmark entities
 class Landmark(Entity):
      def __init__(self):
@@ -85,6 +110,54 @@ class Agent(Entity):
         self.action = Action()
         # script behavior to execute
         self.action_callback = None
+
+    def render_init(self, viewer):
+        # custom renderer to show agent actions
+        from multiagent import rendering
+
+        render_geoms = []
+        render_geoms_xform = []
+
+        # common transform for everything
+        xform = rendering.Transform()
+        render_geoms_xform.append(xform)
+
+        # these lines show what the agent's action is
+        fx_line = rendering.Line((0, 0), (1, 0))
+        fx_line.set_color(*self.color, alpha=0.5)
+        fx_line.add_attr(xform)
+        fx_line.linewidth.stroke = 3
+        render_geoms.append(fx_line)
+
+        fy_line = rendering.Line((0, 0), (0, 1))
+        fy_line.set_color(*self.color, alpha=0.5)
+        fy_line.add_attr(xform)
+        fy_line.linewidth.stroke = 3
+        render_geoms.append(fy_line)
+
+        # shows where agent is
+        body_circle = rendering.make_circle(self.size)
+        body_circle.set_color(*self.color, alpha=0.8)
+        body_circle.add_attr(xform)
+        render_geoms.append(body_circle)
+
+        for geom in render_geoms:
+            viewer.add_geom(geom)
+
+        # return info for this viewer
+        return render_geoms, render_geoms_xform
+
+    def render_update(self, viewer, render_state):
+        render_geoms, render_geoms_xform = render_state
+        for geom_xform in render_geoms_xform:
+            geom_xform.set_translation(*self.state.p_pos)
+        fx_line, fy_line, _ = render_geoms
+        if self.action.u is not None:
+            ux = self.action.u[0]
+            uy = self.action.u[1]
+            fx_line.end = (0.5 * ux + self.size * np.sign(ux), 0)
+            fy_line.end = (0, 0.5 * uy + self.size * np.sign(uy))
+        return render_geoms, render_geoms_xform
 
 # this is for the adversary
 class AdversaryAgent(Agent):
