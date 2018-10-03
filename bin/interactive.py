@@ -16,6 +16,11 @@ if __name__ == '__main__':
         '--scenario',
         default='simple.py',
         help='Path of the scenario Python script.')
+    parser.add_argument(
+        '--fps',
+        type=float,
+        default=20.0,
+        help='frames per second to render')
     args = parser.parse_args()
 
     # load scenario from script
@@ -39,6 +44,7 @@ if __name__ == '__main__':
     obs_n = env.reset()
     last_frame = time.time()
     done = False
+    delay = 1 / args.fps
     while not done:
         # query for action from each agent's policy
         act_n = []
@@ -49,11 +55,11 @@ if __name__ == '__main__':
         # render all agent views
         env.render()
         elapsed = time.time() - last_frame
-        time.sleep(max(0, 0.05 - elapsed))
+        time.sleep(max(0, delay - elapsed))
         last_frame = time.time()
         done = all(done_n)
         # display rewards
-        #for agent in env.world.agents:
-        #    print(agent.name + " reward: %0.3f" % env._get_reward(agent))
+        for agent in env.world.agents:
+           print(agent.name + " reward: %0.3f" % env._get_reward(agent))
     print('Done! Use Enter or Ctrl+D to exit.')
     input()

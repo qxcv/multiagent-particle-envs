@@ -8,52 +8,82 @@ class GravityWorld(World):
         super().__init__()
 
         # add agents
-        self.agents = [Agent() for i in range(1)]
+        self.agents = [Agent() for i in range(2)]
+        controller, adversary = self.agents
 
-        control_agent = self.agents[0]
-        control_agent.name = 'controller'
-        control_agent.collide = True
-        control_agent.silent = True
+        controller.name = 'controller'
+        controller.collide = True
+        controller.silent = True
         # slow acceleration & low friction
-        control_agent.damping = 0.01
-        control_agent.accel = 0.2
+        controller.damping = 0.01
+        controller.accel = 0.2
+
+        adversary.name = 'adversary'
+        adversary.collide = False
+        adversary.silent = True
+        # damping doesn't matter, so I'll just set to high value
+        adversary.damping = 0.8
+        # acceleration should be ~half of real adversary acceleration so that
+        # adversary can do tricky stuff (will turn up if this is underpowered)
+        adversary.accel = 0.1
 
         # add landmarks
         self.landmarks = [Landmark() for i in range(2)]
-        sun_landmark, goal_landmark = self.landmarks
+        sun, goal = self.landmarks
 
-        sun_landmark.name = 'sun'
-        sun_landmark.collide = False
-        sun_landmark.movable = False
-        sun_landmark.gravity_coeff = 0.05
-        sun_landmark.size = 0.2
+        sun.name = 'sun'
+        sun.collide = False
+        sun.movable = False
+        sun.gravity_coeff = 0.05
+        sun.size = 0.2
 
-        goal_landmark.name = 'goal'
-        goal_landmark.collide = False
-        goal_landmark.movable = False
-        goal_landmark.size = 0.2
-        goal_landmark.gravity_coeff = 0.05
+        goal.name = 'goal'
+        goal.collide = False
+        goal.movable = False
+        goal.size = 0.2
+        goal.gravity_coeff = 0.05
 
         self.time = 0
         self.max_steps = 500
 
     def reset(self):
-        control_agent = self.agents[0]
-        control_agent.color = np.array([0.25, 0.25, 0.25])
+        controller, adversary = self.agents
+
         sun, goal = self.landmarks
         sun.color = np.array([0.75, 0.25, 0.25])
         goal.color = np.array([0.25, 0.75, 0.25])
 
-        control_agent.state.p_pos = np.array([-1, 0]) \
+        controller.color = np.array([0.25, 0.25, 0.25])
+        controller.state.p_pos = np.array([-1, 0]) \
             + np.random.uniform(-0.01, 0.01, self.dim_p)
-        control_agent.state.p_vel = np.array([0.1, 0.25]) \
+        controller.state.p_vel = np.array([0.1, 0.25]) \
             + np.random.uniform(-0.01, 0.01, self.dim_p)
-        control_agent.state.c = np.zeros(self.dim_c)
+        controller.state.c = np.zeros(self.dim_c)
+
+        # invisible adversary sits inside the sun (dot tumblr dot com)
+        adversary.color = np.array([0.75, 0.25, 0.25])
+        adversary.state.p_pos = np.array([0.0, 0.0])
+        adversary.state.p_vel = np.array([0.0, 0.0])
+        adversary.state.c = np.zeros(self.dim_c)
 
         sun.state.p_pos = np.array([0, 0])
         sun.state.p_vel = np.zeros(self.dim_p)
         goal.state.p_pos = np.array([1, 0])
         goal.state.p_vel = np.zeros(self.dim_p)
+
+
+    def apply_action_force(self, p_force):
+        controller, adversary = self.agents
+        # add up controller and adversary controls & noise
+        controller_noise = np.random.randn(*controller.action.u.shape) \
+            * controller.u_noise if controller.u_noise else 0.0
+        adversary_noise = np.random.randn(*adversary.action.u.shape) \
+            * adversary.u_noise if adversary.u_noise else 0.0
+        p_force[0] = controller.action.u + adversary.action.u \
+            + controller_noise + adversary_noise
+        # adversary never moves
+        p_force[1] = np.zeros(self.dim_p)
+        return p_force
 
     def reward(self, agent):
         control_agent = self.agents[0]
@@ -63,7 +93,6 @@ class GravityWorld(World):
         hit_goal = self._entities_overlap(control_agent, goal_landmark) + 0.0
         hit_sun = self._entities_overlap(control_agent, sun_landmark) + 0.0
         rew = self.max_steps * hit_goal - self.max_steps * hit_sun + min(1, 1 - 0.4 * goal_dist)
-        print('rew =', rew, 'and vel =', np.linalg.norm(control_agent.state.p_vel))  # XXX
 
         # now we return the actual reward for the control agent, or negative
         # reward for the adversary

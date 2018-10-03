@@ -94,12 +94,6 @@ class AdversaryAgent(Agent):
         self.silent = True
         self.collide = False
         self.u_range = 0.1
-        # we can use self.action.m to do the modification actions (which apply
-        # force to other things)
-        # TODO: figure out how to do this. Ideally I can run it after all other
-        # things & modify other agents' actions or something like that. Also
-        # need to know how well this plays with MADDPG code; does it make
-        # assumption that action.u contains everything there is?
 
 # multi-agent world
 class World(object):
