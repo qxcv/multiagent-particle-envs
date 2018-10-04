@@ -30,6 +30,7 @@ class Entity(object):
         self.name = ''
         # properties:
         self.size = 0.050
+        self.shape = 'circle'
         # entity can move / be pushed
         self.movable = False
         # entity collides with others
@@ -85,8 +86,45 @@ class Entity(object):
 
 # properties of landmark entities
 class Landmark(Entity):
-     def __init__(self):
+    pass
+
+# rectangular landmark special case (no collision support)
+class RectangularLandmark(Entity):
+    def __init__(self):
         super().__init__()
+        # has no size attribute because it's a rectangle
+        del self.size
+        self.shape = 'rectangle'
+        self.rect_wh = (1, 1)
+        # reddish by default (like lava)
+        self.color = (1.0, 0.05, 0.05)
+        # we don't support collision force calculation
+        self.collide = False
+
+    def render_init(self, viewer):
+        from multiagent import rendering
+
+        render_geoms = []
+        render_geoms_xform = []
+
+        w, h = self.rect_wh
+        dx, dy = w / 2.0, h / 2.0
+        geom = rendering.make_polygon([
+            (-dx, dy), (dx, dy),
+            (dx, -dy), (-dx, -dy)
+        ], filled=True)
+        xform = rendering.Transform()
+        geom.set_color(*self.color, alpha=0.5)
+        geom.add_attr(xform)
+        render_geoms.append(geom)
+        render_geoms_xform.append(xform)
+
+        for geom in render_geoms:
+            viewer.add_geom(geom)
+
+        # return info for this viewer
+        # note that rendering is otherwise the same as if we'd used a circle
+        return render_geoms, render_geoms_xform
 
 # properties of agent entities
 class Agent(Entity):
@@ -282,6 +320,10 @@ class World(object):
             return [None, None] # not a collider
         if (entity_a is entity_b):
             return [None, None] # don't collide against itself
+        if (entity_a.shape != 'circle') or (entity_b.shape != 'circle'):
+            raise ValueError(
+                "Can't compute collision force between %s and %s"
+                % (entity_a.shape, entity_b.shape))
         # compute actual distance between entities
         delta_pos = entity_a.state.p_pos - entity_b.state.p_pos
         dist = np.linalg.norm(delta_pos)
@@ -297,6 +339,11 @@ class World(object):
 
     # get gravitational forces between two entities
     def get_gravitational_force(self, entity_a, entity_b):
+        if ((not entity_a.movable) and (not entity_b.movable)) or \
+           (entity_a.gravity_coeff == 0 and entity_b.gravity_coeff == 0):
+            # can't have force between *two* immovable things, or two things
+            # with zero gravity coeff
+            return [None, None]
         coeff = entity_a.gravity_coeff + entity_b.gravity_coeff
         if abs(coeff) <= 1e-5:
             return [None, None]
