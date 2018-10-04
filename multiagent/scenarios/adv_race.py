@@ -17,7 +17,7 @@ class RaceWorld(CliffWorld):
         controller.collide = False
         controller.silent = True
         # high acceleration, medium friction
-        controller.damping = 0.15
+        controller.damping = 0.2
         controller.accel = 1
 
         adversary.name = 'adversary'
@@ -25,8 +25,8 @@ class RaceWorld(CliffWorld):
         adversary.silent = True
         # damping doesn't matter, so I'll just set to high value
         adversary.damping = 0.8
-        # adversary can actually do a lot, but not as much as controller
-        adversary.accel = 3 / 4.0 * controller.accel
+        # adversary can do half as much as controller
+        adversary.accel = 1 / 2.0 * controller.accel
 
         # add landmarks
         self.landmarks = [RectangularLandmark()]
@@ -36,7 +36,7 @@ class RaceWorld(CliffWorld):
         cliff.name = 'cliff'
         cliff.collide = False
         cliff.movable = False
-        cliff.rect_wh = np.array([0.6, 0.6])
+        cliff.rect_wh = np.array([1.0, 0.2])
 
         self.time = 0
         # long num of steps so that we can actually get somewhere
@@ -48,11 +48,13 @@ class RaceWorld(CliffWorld):
         controller, adversary = self.agents
 
         controller.color = np.array([0.25, 0.25, 0.25])
-        # start at a slightly initial position
-        controller.state.p_pos = np.array([0, 0.6 / 2 + 0.1]) \
+        # start at a slightly jittered initial position on top or bottom
+        mult = np.random.choice([-1, 1])
+        controller.state.p_pos \
+            = np.array([-0.5 * mult, mult * (0.2 / 2 + 0.15)]) \
             + np.random.uniform(-0.01, 0.01, self.dim_p)
-        # start moving right from middle of topmost edge
-        controller.state.p_vel = np.array([0.2, 0]) \
+        # start moving in right direction from top or bottom edge
+        controller.state.p_vel = np.array([mult * 0.6, 0]) \
             + np.random.uniform(-0.01, 0.01, self.dim_p)
         controller.state.c = np.zeros(self.dim_c)
 
@@ -92,7 +94,7 @@ class RaceWorld(CliffWorld):
         # reward for going along right direction, penalise for hitting cliff,
         # slightly penalise for going far away from cliff
         rew = 5 * forward_vel - self.max_steps * hit_cliff \
-            - 0.1 * max(cliff_dist - 0.5, 0) ** 2
+            - 0.1 * max(cliff_dist - 0.4, 0) ** 2
 
         # return actual reward for controller, negative for adversary
         if agent is self.agents[0]:
