@@ -94,10 +94,6 @@ class RaceWorld(CliffWorld):
         rew = 5 * forward_vel - self.max_steps * hit_cliff \
             - 0.1 * max(cliff_dist - 0.5, 0) ** 2
 
-        # XXX remove this after tested
-        print('Reward %.3f (forward_vel=%.3f, hit_cliff=%f, cliff_dist=%.2f)'
-              % (rew, forward_vel, hit_cliff, cliff_dist))
-
         # return actual reward for controller, negative for adversary
         if agent is self.agents[0]:
             return rew
