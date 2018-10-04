@@ -93,8 +93,6 @@ class CliffWorld(World):
         cliff_landmark, goal_landmark = self.landmarks
         goal_dist = np.linalg.norm(control_agent.state.p_pos -
                                    goal_landmark.state.p_pos)
-        cliff_dist = np.linalg.norm(control_agent.state.p_pos -
-                                  cliff_landmark.state.p_pos)
         hit_goal = self._entities_overlap(control_agent, goal_landmark) + 0.0
         hit_cliff = self._entities_overlap(control_agent, cliff_landmark) + 0.0
         # this is almost exactly the same reward function as the gravity_adv
