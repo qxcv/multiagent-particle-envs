@@ -5,8 +5,11 @@ from multiagent.scenarios.adv_cliff import CliffWorld, _circ_rect_disp
 
 
 class RaceWorld(CliffWorld):
-    def __init__(self):
+    def __init__(self, *, nulladv=False, transfer=False):
         super().__init__()
+
+        if transfer:
+            assert nulladv, "can't do transfer without nulladv"
 
         # add agents
         self.agents = [Agent() for i in range(2)]
@@ -16,9 +19,16 @@ class RaceWorld(CliffWorld):
         # don't bother colliding; there's nothing to collide with here
         controller.collide = False
         controller.silent = True
-        # high acceleration, medium friction
-        controller.damping = 0.2
-        controller.accel = 1
+        # train environment has high acceleration, medium friction
+        if not transfer:
+            controller.damping = 0.2
+            controller.accel = 1
+        else:
+            # test environment has medium acceleration, low friction
+            # (and also a tiny bit of control noise)
+            controller.damping = 0.02
+            controller.accel = 0.5
+            controller.u_noise = 0.01
 
         adversary.name = 'adversary'
         adversary.collide = False
@@ -26,7 +36,10 @@ class RaceWorld(CliffWorld):
         # damping doesn't matter, so I'll just set to high value
         adversary.damping = 0.8
         # adversary can do half as much as controller
-        adversary.accel = 1 / 2.0 * controller.accel
+        if nulladv:
+            adversary.accel = 0.0
+        else:
+            adversary.accel = 1 / 2.0 * controller.accel
 
         # add landmarks
         self.landmarks = [RectangularLandmark()]

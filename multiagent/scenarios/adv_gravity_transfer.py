@@ -7,6 +7,6 @@ class Scenario(adv_gravity.Scenario):
     plain DDPG baseline with no adversary)."""
 
     def make_world(self):
-        world = adv_gravity.GravityWorld(nulladv=True)
+        world = adv_gravity.GravityWorld(nulladv=True, transfer=True)
         world.reset()
         return world

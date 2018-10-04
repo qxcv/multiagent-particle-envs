@@ -4,8 +4,11 @@ from multiagent.scenario import BaseScenario
 
 
 class CliffWorld(World):
-    def __init__(self):
+    def __init__(self, *, transfer=False, nulladv=False):
         super().__init__()
+
+        if transfer:
+            assert nulladv, "adversary disabled for transfer"
 
         # add agents
         self.agents = [Agent() for i in range(2)]
@@ -18,14 +21,21 @@ class CliffWorld(World):
         # high acceleration, lowish friction
         controller.damping = 0.01
         controller.accel = 0.6
+        if transfer:
+            # in transfer environment, only difference is noisy control
+            controller.u_noise = 0.3
 
         adversary.name = 'adversary'
         adversary.collide = False
         adversary.silent = True
         # damping doesn't matter, so I'll just set to high value
         adversary.damping = 0.8
-        # adversary can actually do a lot, but not as much as controller
-        adversary.accel = 3 / 4.0 * controller.accel
+        if not nulladv:
+            # adversary can actually do a lot, but not as much as controller
+            adversary.accel = 3 / 4.0 * controller.accel
+        else:
+            # nerfed in nulladv mode
+            adversary.accel = 0.0
 
         # add landmarks
         self.landmarks = [RectangularLandmark(), Landmark()]
@@ -138,7 +148,8 @@ class CliffWorld(World):
                          "-".join(map(str, shapes)))
 
     def done(self, agent):
-        # we ignore agent arg because termination condition is the same for all agents
+        # we ignore agent arg because termination condition is the same for all
+        # agents
         if self.time > self.max_steps:
             return True
         control_agent = self.agents[0]
@@ -146,12 +157,12 @@ class CliffWorld(World):
         return self._entities_overlap(control_agent, cliff_landmark) \
             or self._entities_overlap(control_agent, goal_landmark)
 
+
 def _circ_rect_disp(ent_a, ent_b):
     # displacement between rectangle and circle
     assert ent_a.shape == 'circle' and ent_b.shape == 'rectangle'
     cxy = ent_a.state.p_pos
     cx, cy = cxy
-    radius = ent_a.size
     rx, ry = ent_b.state.p_pos
     w, h = ent_b.rect_wh
     left, right = rx - w / 2.0, ry + w / 2.0

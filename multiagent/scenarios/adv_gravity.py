@@ -4,8 +4,11 @@ from multiagent.scenario import BaseScenario
 
 
 class GravityWorld(World):
-    def __init__(self):
+    def __init__(self, *, transfer=False, nulladv=False):
         super().__init__()
+
+        if transfer:
+            assert nulladv, "transfer ==> nulladv (or at least it should)"
 
         # add agents
         self.agents = [Agent() for i in range(2)]
@@ -17,14 +20,21 @@ class GravityWorld(World):
         # slow acceleration & low friction
         controller.damping = 0.0
         controller.accel = 0.3
+        # transfer environment adds a small amount of control noise
+        if transfer:
+            controller.u_noise = 0.03
 
         adversary.name = 'adversary'
         adversary.collide = False
         adversary.silent = True
         # damping doesn't matter, so I'll just set to high value
         adversary.damping = 0.8
-        # acceleration is almost that of the controller to make things hard
-        adversary.accel = 0.6 * controller.accel
+        if not nulladv:
+            # acceleration is almost that of the controller to make things hard
+            adversary.accel = 0.6 * controller.accel
+        else:
+            # nulladv nerfs adversary
+            adversary.accel = 0.0
 
         # add landmarks
         self.landmarks = [Landmark() for i in range(2)]
@@ -35,12 +45,14 @@ class GravityWorld(World):
         sun.movable = False
         sun.gravity_coeff = 0.15
         sun.size = 0.2
+        if transfer:
+            # transfer increases gravitational force of sun by 66%
+            sun.gravity_coeff = 0.25
 
         goal.name = 'goal'
         goal.collide = False
         goal.movable = False
         goal.size = 0.14
-        # roughly 1/3rd the gravity due to smaller mass
         goal.gravity_coeff = 0.15
 
         self.time = 0

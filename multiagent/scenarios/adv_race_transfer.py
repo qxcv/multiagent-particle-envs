@@ -6,6 +6,6 @@ class Scenario(adv_race.Scenario):
     to accelerate (like adv_gravity_nulladv)."""
 
     def make_world(self):
-        world = adv_race.RaceWorld(nulladv=True)
+        world = adv_race.RaceWorld(nulladv=True, transfer=True)
         world.reset()
         return world
