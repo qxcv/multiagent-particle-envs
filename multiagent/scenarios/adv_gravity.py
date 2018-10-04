@@ -87,7 +87,6 @@ class GravityWorld(World):
         goal.state.p_pos = np.array([1, 0])
         goal.state.p_vel = np.zeros(self.dim_p)
 
-
     def apply_action_force(self, p_force):
         controller, adversary = self.agents
         # add up controller and adversary controls & noise
@@ -101,14 +100,22 @@ class GravityWorld(World):
         p_force[1] = np.zeros(self.dim_p)
         return p_force
 
+    def _hit_goal_sun(self):
+        control_agent = self.agents[0]
+        sun_landmark, goal_landmark = self.landmarks
+        hit_goal = self._entities_overlap(control_agent, goal_landmark) + 0.0
+        hit_sun = self._entities_overlap(control_agent, sun_landmark) + 0.0
+        return hit_goal, hit_sun
+
     def reward(self, agent):
         control_agent = self.agents[0]
         sun_landmark, goal_landmark = self.landmarks
-        goal_dist = np.linalg.norm(control_agent.state.p_pos - goal_landmark.state.p_pos)
-        sun_dist = np.linalg.norm(control_agent.state.p_pos - sun_landmark.state.p_pos)
-        hit_goal = self._entities_overlap(control_agent, goal_landmark) + 0.0
+        goal_dist = np.linalg.norm(
+            control_agent.state.p_pos - goal_landmark.state.p_pos)
+        hit_goal, hit_sun = self._hit_goal_sun()
         hit_sun = self._entities_overlap(control_agent, sun_landmark) + 0.0
-        rew = self.max_steps * hit_goal - self.max_steps * hit_sun - min(0.2 * goal_dist, 1)
+        rew = self.max_steps * hit_goal - self.max_steps * hit_sun \
+            - min(0.2 * goal_dist, 1)
 
         # now we return the actual reward for the control agent, or negative
         # reward for the adversary
@@ -138,7 +145,8 @@ class GravityWorld(World):
         return dist < min_sep
 
     def done(self, agent):
-        # we ignore agent arg because termination condition is the same for all agents
+        # we ignore agent arg because termination condition is the same for all
+        # agents
         if self.time > self.max_steps:
             return True
         control_agent = self.agents[0]
@@ -160,13 +168,24 @@ class Scenario(BaseScenario):
         return world.reward(agent)
 
     def observation(self, agent, world):
-        # get positions of all landmarks in this *first agent's* reference frame
-        # this means that both agents get the same observation
+        # get positions of all landmarks in this *first agent's* reference
+        # frame this means that both agents get the same observation
         entity_pos = []
         agent = world.agents[0]
         for entity in world.landmarks:
             entity_pos.append(entity.state.p_pos - agent.state.p_pos)
         return np.concatenate([agent.state.p_vel] + entity_pos)
+
+    def benchmark_data(self, agent, world):
+        if agent is world.agents[1]:
+            # don't record anything for adversary
+            return
+        # for agent, record (1) reward, (2) whether they hit goal, (3) whether
+        # they hit sun
+        rew = world.reward(agent)
+        hit_goal, hit_sun = world._hit_goal_sun()
+        rv = (rew, bool(hit_goal), bool(hit_sun))
+        return rv
 
     def done(self, agent, world):
         rv = world.done(agent)

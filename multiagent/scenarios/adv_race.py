@@ -95,7 +95,7 @@ class RaceWorld(CliffWorld):
             # rotate sign counterclockwise by 90 degrees & project onto agent's
             # velocity
             rot_mat = np.array([
-                # 90 degree CCW rotation
+                # 90 degree CCW roation
                 [0, -1],
                 [1, 0]
             ])
@@ -137,6 +137,17 @@ class Scenario(BaseScenario):
 
     def reward(self, agent, world):
         return world.reward(agent)
+
+    def benchmark_data(self, agent, world):
+        if agent is world.agents[1]:
+            # don't record anything for adversary
+            return
+        # for agent, record (1) reward, (2) whether they hit cliff
+        rew = world.reward(agent)
+        cliff = world.landmarks[0]
+        hit_cliff = world._entities_overlap(agent, cliff)
+        rv = (rew, bool(hit_cliff))
+        return rv
 
     def observation(self, agent, world):
         entity_pos = []
