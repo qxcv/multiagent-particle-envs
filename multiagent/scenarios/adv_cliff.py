@@ -98,17 +98,23 @@ class CliffWorld(World):
         p_force[1] = np.zeros(self.dim_p)
         return p_force
 
+    def _hit_goal_cliff(self):
+        control_agent = self.agents[0]
+        cliff_landmark, goal_landmark = self.landmarks
+        hit_goal = self._entities_overlap(control_agent, goal_landmark) + 0.0
+        hit_cliff = self._entities_overlap(control_agent, cliff_landmark) + 0.0
+        return hit_goal, hit_cliff
+
     def reward(self, agent):
         control_agent = self.agents[0]
         cliff_landmark, goal_landmark = self.landmarks
         goal_dist = np.linalg.norm(control_agent.state.p_pos -
                                    goal_landmark.state.p_pos)
-        hit_goal = self._entities_overlap(control_agent, goal_landmark) + 0.0
-        hit_cliff = self._entities_overlap(control_agent, cliff_landmark) + 0.0
+        hit_goal, hit_cliff = self._hit_goal_cliff()
         # this is almost exactly the same reward function as the gravity_adv
         # problem
         rew = self.max_steps * hit_goal - self.max_steps * hit_cliff \
-           - min(0.2 * goal_dist, 1)
+            - min(0.2 * goal_dist, 1)
 
         # return actual reward for controller, negative for adversary
         if agent is self.agents[0]:
@@ -184,6 +190,17 @@ class Scenario(BaseScenario):
 
     def reset_world(self, world):
         return world.reset()
+
+    def benchmark_data(self, agent, world):
+        if agent is world.agents[1]:
+            # don't record anything for adversary
+            return
+        # for agent, record (1) reward, (2) whether they hit goal, (3) whether
+        # they hit cliff
+        rew = world.reward(agent)
+        hit_goal, hit_cliff = world._hit_goal_cliff()
+        rv = (rew, bool(hit_goal), bool(hit_cliff))
+        return rv
 
     def reward(self, agent, world):
         return world.reward(agent)

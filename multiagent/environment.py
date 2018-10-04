@@ -81,6 +81,8 @@ class MultiAgentEnv(gym.Env):
         obs_n = []
         reward_n = []
         done_n = []
+        # what? why is this a dictionary when only one key is ever used? what
+        # does "n" even mean?
         info_n = {'n': []}
         self.agents = self.world.policy_agents
         # set action for each agent
