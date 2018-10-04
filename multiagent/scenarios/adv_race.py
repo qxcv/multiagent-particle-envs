@@ -20,15 +20,12 @@ class RaceWorld(CliffWorld):
         controller.collide = False
         controller.silent = True
         # train environment has high acceleration, medium friction
-        if not transfer:
-            controller.damping = 0.2
-            controller.accel = 1
-        else:
-            # test environment has medium acceleration, low friction
-            # (and also a tiny bit of control noise)
-            controller.damping = 0.02
-            controller.accel = 0.5
-            controller.u_noise = 0.01
+        controller.damping = 0.2
+        controller.accel = 1
+        if transfer:
+            # test environment has control noise and lower acceleration
+            controller.accel = 0.8
+            controller.u_noise = 0.5
 
         adversary.name = 'adversary'
         adversary.collide = False
