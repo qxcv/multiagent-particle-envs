@@ -133,22 +133,9 @@ class CliffWorld(World):
             if ent_a.shape == 'rectangle':
                 # ensure ent_a is always the circle
                 ent_a, ent_b = ent_b, ent_a
-            # is centre of the circle inside the rect? if so, we're done
-            cxy = ent_a.state.p_pos
-            cx, cy = cxy
-            radius = ent_a.size
-            rx, ry = ent_b.state.p_pos
-            w, h = ent_b.rect_wh
-            left, right = rx - w / 2.0, ry + w / 2.0
-            top, bot = ry + h / 2.0, ry - h / 2.0
-            # find distance to collision point (nearest point inside rect) &
-            # check if it's less than radius
-            collide_point = np.array([
-                np.clip(cx, left, right),
-                np.clip(cy, bot, top)
-            ])
-            col_dist = np.linalg.norm(collide_point - cxy)
-            return col_dist < radius
+            displacement = _circ_rect_disp(ent_a, ent_b)
+            col_dist = np.linalg.norm(displacement)
+            return col_dist < ent_a.size
         raise ValueError("Don't know how to do %s collision" %
                          "-".join(map(str, shapes)))
 
@@ -160,6 +147,24 @@ class CliffWorld(World):
         cliff_landmark, goal_landmark = self.landmarks
         return self._entities_overlap(control_agent, cliff_landmark) \
             or self._entities_overlap(control_agent, goal_landmark)
+
+def _circ_rect_disp(ent_a, ent_b):
+    # displacement between rectangle and circle
+    assert ent_a.shape == 'circle' and ent_b.shape == 'rectangle'
+    cxy = ent_a.state.p_pos
+    cx, cy = cxy
+    radius = ent_a.size
+    rx, ry = ent_b.state.p_pos
+    w, h = ent_b.rect_wh
+    left, right = rx - w / 2.0, ry + w / 2.0
+    top, bot = ry + h / 2.0, ry - h / 2.0
+    # find distance to collision point (nearest point inside rect) &
+    # check if it's less than radius
+    collide_point = np.array([
+        np.clip(cx, left, right),
+        np.clip(cy, bot, top)
+    ])
+    return collide_point - cxy
 
 
 class Scenario(BaseScenario):
@@ -179,7 +184,11 @@ class Scenario(BaseScenario):
         agent = world.agents[0]
         for entity in world.landmarks:
             entity_pos.append(entity.state.p_pos - agent.state.p_pos)
-        return np.concatenate([agent.state.p_vel] + entity_pos)
+        # also compute displacement from big cliff rectangle
+        cliff = world.landmarks[0]
+        rect_disp = _circ_rect_disp(agent, cliff)
+        rv = np.concatenate([agent.state.p_vel, rect_disp] + entity_pos)
+        return rv
 
     def done(self, agent, world):
         rv = world.done(agent)
